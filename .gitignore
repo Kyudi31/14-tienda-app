@@ -31,7 +31,7 @@ yarn-error.*
 *.pem
 
 # local env files
-.env*.local
+.env
 
 # typescript
 *.tsbuildinfo
@@ -42,5 +42,3 @@ example
 /ios
 /android
 
-# visual studio
-/.vscode
