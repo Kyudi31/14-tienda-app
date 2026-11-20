@@ -3,6 +3,24 @@
  * Siguen convención snake_case según la Sección 9.2 de la planeación.
  */
 
+import type { SQLiteDatabase } from 'expo-sqlite';
+
+export interface SQLiteRunResult {
+  lastInsertRowId: number;
+  changes: number;
+}
+
+export interface SQLiteDatabaseExecutor {
+  getAllAsync<T>(source: string, params?: (string | number | null | boolean)[]): Promise<T[]>;
+  getFirstAsync<T>(source: string, params?: (string | number | null | boolean)[]): Promise<T | null>;
+  runAsync(
+    source: string,
+    params?: (string | number | null | boolean)[]
+  ): Promise<SQLiteRunResult>;
+}
+
+export type DatabaseClient = SQLiteDatabase | SQLiteDatabaseExecutor;
+
 export interface ProductoRow {
   id: number;
   codigo: string | null;
