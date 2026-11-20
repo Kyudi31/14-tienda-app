@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 
 import { ProductCard } from '@/components/inventario/ProductCard';
@@ -14,6 +14,17 @@ export default function ProductosScreen() {
   const theme = Colors[scheme === 'dark' ? 'dark' : 'light'];
   const [busqueda, setBusqueda] = useState('');
   const [soloBajoStock, setSoloBajoStock] = useState(false);
+  const [actualizacion, setActualizacion] = useState(0);
+
+  const recargarProductos = useCallback(() => {
+    setActualizacion((v) => v + 1);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      recargarProductos();
+    }, [recargarProductos])
+  );
 
   const productos = getProductos();
 
@@ -46,11 +57,13 @@ export default function ProductosScreen() {
 
       <FlatList
         data={productosFiltrados}
+        extraData={actualizacion}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <ProductCard
             item={item}
             onPress={() => router.push(`/producto/${item.id}`)}
+            onStockChange={recargarProductos}
             theme={theme}
           />
         )}

@@ -12,6 +12,7 @@ Registro de sesiones de desarrollo asistido con IA, metodologías aplicadas, val
 | **#2 · 14-Nov** | Instalación de dependencias de sensores y gestos | *"Agrega expo-camera, expo-sqlite, expo-sensors y gesture-handler"* | `npx expo install` para compatibilidad con Expo SDK 52/58 | Aceptado y versionado |
 | **#3 · 14-Nov** | Definición de barreras y pruebas de contención | *"Diseña la matriz de pruebas del canario ZZZ-NO-ES-UN-SECRETO"* | Comprobación de que `.env*` esté excluido de Git y del agente | Aceptado |
 | **#4 · 19-Nov** | Navegación Hito 1 y rutas Expo Router | *"Configura arquitectura de rutas Expo Router (tabs, escaner, movimientos, producto/[id]) con GestureHandlerRootView"* | `npx tsc --noEmit` código 0, auditoría de seguridad aprobada, archivos ≤ 300 líneas | Aceptado y commiteado tras revisión de diff |
+| **#5 · 19-Nov** | Gestos interactivos y accesibles (Hito 1) | *"Implementa Swipe horizontal en ProductCard y Pinch zoom en CameraPreview con alternativas accesibles por botón"* | `npx tsc --noEmit` código 0, sin any, alternativas accesibles con accessibilityLabel | Aceptado y commiteado |
 
 ---
 
