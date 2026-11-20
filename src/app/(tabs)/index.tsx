@@ -8,12 +8,13 @@ import {
   View,
   useColorScheme,
 } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 
 import { ProductCard } from '@/components/inventario/ProductCard';
 import { ProductStats } from '@/components/inventario/ProductStats';
 import { SearchBar } from '@/components/inventario/SearchBar';
+import { SyncStatusBadge } from '@/components/sync/SyncStatusBadge';
 import { Colors } from '@/constants/theme';
 import { buscarProductosAsync, getProductosAsync } from '@/services/inventario';
 import type { Producto } from '@/types/inventario';
@@ -21,6 +22,7 @@ import type { Producto } from '@/types/inventario';
 export default function ProductosScreen() {
   const scheme = useColorScheme();
   const theme = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const navigation = useNavigation();
   const [busqueda, setBusqueda] = useState('');
   const [soloBajoStock, setSoloBajoStock] = useState(false);
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -38,6 +40,18 @@ export default function ProductosScreen() {
       setCargando(false);
     }
   }, [busqueda]);
+
+  useEffect(() => {
+    if (navigation && typeof navigation.setOptions === 'function') {
+      navigation.setOptions({
+        headerRight: () => (
+          <View style={styles.headerRightContainer}>
+            <SyncStatusBadge onSyncComplete={recargarProductos} />
+          </View>
+        ),
+      });
+    }
+  }, [navigation, recargarProductos]);
 
   useFocusEffect(
     useCallback(() => {
@@ -154,6 +168,9 @@ export default function ProductosScreen() {
 }
 
 const styles = StyleSheet.create({
+  headerRightContainer: {
+    marginRight: 16,
+  },
   container: {
     flex: 1,
   },
