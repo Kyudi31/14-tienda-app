@@ -1,4 +1,4 @@
-import { MovimientoStock, Producto } from '@/types/inventario';
+import type { MovimientoStock, Producto } from '@/types/inventario';
 
 export const PRODUCTOS_INICIALES: Producto[] = [
   {

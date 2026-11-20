@@ -45,7 +45,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "check": "tsc --noEmit && expo lint"
+    "test": "node --test --experimental-strip-types src/services/__tests__/*.test.ts",
+    "check": "tsc --noEmit && npm test"
   },
   "private": true
 }

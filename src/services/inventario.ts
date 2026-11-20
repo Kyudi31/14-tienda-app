@@ -1,4 +1,4 @@
-import {
+import type {
   CrearProductoInput,
   MovimientoStock,
   Producto,
@@ -6,11 +6,11 @@ import {
   ResultadoCreacionProducto,
   TipoMovimiento,
 } from '@/types/inventario';
-import { MOVIMIENTOS_INICIALES, PRODUCTOS_INICIALES } from './mockInventario';
+import { MOVIMIENTOS_INICIALES, PRODUCTOS_INICIALES } from './mockInventario.ts';
 
 // Estado en memoria para sincronización entre componentes
-let productosMemoria: Producto[] = [...PRODUCTOS_INICIALES];
-let movimientosMemoria: MovimientoStock[] = [...MOVIMIENTOS_INICIALES];
+let productosMemoria: Producto[] = PRODUCTOS_INICIALES.map((p) => ({ ...p }));
+let movimientosMemoria: MovimientoStock[] = MOVIMIENTOS_INICIALES.map((m) => ({ ...m }));
 
 export function getProductos(): Producto[] {
   return [...productosMemoria];
@@ -185,4 +185,34 @@ export function crearProducto(input: CrearProductoInput): ResultadoCreacionProdu
     producto: nuevoProducto,
   };
 }
+
+/**
+ * Calcula el valor monetario total del inventario (suma de precio * stockActual).
+ * Si no se proporciona la lista de productos, utiliza el catálogo en memoria.
+ */
+export function valorInventario(productos?: Producto[]): number {
+  const catalogo = productos ?? productosMemoria;
+  return catalogo.reduce((total, p) => total + p.precio * p.stockActual, 0);
+}
+
+/**
+ * Función pura que determina si un producto se encuentra en alerta de bajo stock.
+ * Se activa cuando el stockActual es menor o igual al stockMinimo.
+ */
+export function esBajoStock(producto: { stockActual: number; stockMinimo: number }): boolean {
+  return producto.stockActual <= producto.stockMinimo;
+}
+
+/**
+ * Restablece el inventario y movimientos en memoria a su estado inicial o personalizado.
+ * Diseñada para pruebas unitarias e inicialización limpia de datos.
+ */
+export function reiniciarMemoria(
+  productos: Producto[] = PRODUCTOS_INICIALES,
+  movimientos: MovimientoStock[] = MOVIMIENTOS_INICIALES
+): void {
+  productosMemoria = productos.map((p) => ({ ...p }));
+  movimientosMemoria = movimientos.map((m) => ({ ...m }));
+}
+
 
