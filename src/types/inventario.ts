@@ -30,3 +30,29 @@ export interface ResultadoAjuste {
   producto?: Producto;
   movimiento?: MovimientoStock;
 }
+
+export interface CrearProductoInput {
+  codigoBarras: string;
+  nombre: string;
+  categoria?: string;
+  precio: number;
+  stockActual?: number;
+  stockMinimo?: number;
+  unidadMedida?: string;
+}
+
+export interface ErroresFormularioProducto {
+  codigoBarras?: string;
+  nombre?: string;
+  precio?: string;
+  stockActual?: string;
+  stockMinimo?: string;
+}
+
+export interface ResultadoCreacionProducto {
+  exito: boolean;
+  mensaje: string;
+  producto?: Producto;
+  errores?: ErroresFormularioProducto;
+}
+

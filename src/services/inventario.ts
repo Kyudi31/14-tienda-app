@@ -1,121 +1,12 @@
-import { MovimientoStock, Producto, ResultadoAjuste, TipoMovimiento } from '@/types/inventario';
-
-// Productos iniciales para la tienda de barrio
-const PRODUCTOS_INICIALES: Producto[] = [
-  {
-    id: 'prod-1',
-    codigoBarras: '7701234567890',
-    nombre: 'Leche Entera 1L',
-    categoria: 'Lácteos',
-    precio: 3800,
-    stockActual: 12,
-    stockMinimo: 5,
-    unidadMedida: 'bolsa',
-    actualizadoEn: '2026-11-20T08:00:00Z',
-  },
-  {
-    id: 'prod-2',
-    codigoBarras: '7702345678901',
-    nombre: 'Arroz Blanco 1kg',
-    categoria: 'Granos',
-    precio: 4500,
-    stockActual: 2,
-    stockMinimo: 4,
-    unidadMedida: 'paquete',
-    actualizadoEn: '2026-11-20T08:15:00Z',
-  },
-  {
-    id: 'prod-3',
-    codigoBarras: '7703456789012',
-    nombre: 'Aceite Vegetal 500ml',
-    categoria: 'Abarrotes',
-    precio: 6200,
-    stockActual: 8,
-    stockMinimo: 3,
-    unidadMedida: 'botella',
-    actualizadoEn: '2026-11-20T08:30:00Z',
-  },
-  {
-    id: 'prod-4',
-    codigoBarras: '7704567890123',
-    nombre: 'Pan Tajado Tradicional',
-    categoria: 'Panadería',
-    precio: 5000,
-    stockActual: 1,
-    stockMinimo: 3,
-    unidadMedida: 'bolsa',
-    actualizadoEn: '2026-11-20T08:45:00Z',
-  },
-  {
-    id: 'prod-5',
-    codigoBarras: '7705678901234',
-    nombre: 'Huevos AA x12',
-    categoria: 'Abarrotes',
-    precio: 9500,
-    stockActual: 15,
-    stockMinimo: 6,
-    unidadMedida: 'cubeta',
-    actualizadoEn: '2026-11-20T09:00:00Z',
-  },
-  {
-    id: 'prod-6',
-    codigoBarras: '7706789012345',
-    nombre: 'Café Molido 250g',
-    categoria: 'Bebidas',
-    precio: 7800,
-    stockActual: 6,
-    stockMinimo: 2,
-    unidadMedida: 'paquete',
-    actualizadoEn: '2026-11-20T09:15:00Z',
-  },
-];
-
-const MOVIMIENTOS_INICIALES: MovimientoStock[] = [
-  {
-    id: 'mov-1',
-    productoId: 'prod-1',
-    productoNombre: 'Leche Entera 1L',
-    tipo: 'ENTRADA',
-    cantidad: 10,
-    stockAnterior: 2,
-    stockNuevo: 12,
-    motivo: 'Recepción pedido proveedor',
-    fecha: '2026-11-20T08:00:00Z',
-  },
-  {
-    id: 'mov-2',
-    productoId: 'prod-4',
-    productoNombre: 'Pan Tajado Tradicional',
-    tipo: 'SALIDA',
-    cantidad: 2,
-    stockAnterior: 3,
-    stockNuevo: 1,
-    motivo: 'Venta mostrador',
-    fecha: '2026-11-20T08:45:00Z',
-  },
-  {
-    id: 'mov-3',
-    productoId: 'prod-5',
-    productoNombre: 'Huevos AA x12',
-    tipo: 'ENTRADA',
-    cantidad: 15,
-    stockAnterior: 0,
-    stockNuevo: 15,
-    motivo: 'Compra matutina',
-    fecha: '2026-11-20T09:00:00Z',
-  },
-  {
-    id: 'mov-4',
-    productoId: 'prod-2',
-    productoNombre: 'Arroz Blanco 1kg',
-    tipo: 'SALIDA',
-    cantidad: 3,
-    stockAnterior: 5,
-    stockNuevo: 2,
-    motivo: 'Venta cliente frecuente',
-    fecha: '2026-11-20T09:10:00Z',
-  },
-];
+import {
+  CrearProductoInput,
+  MovimientoStock,
+  Producto,
+  ResultadoAjuste,
+  ResultadoCreacionProducto,
+  TipoMovimiento,
+} from '@/types/inventario';
+import { MOVIMIENTOS_INICIALES, PRODUCTOS_INICIALES } from './mockInventario';
 
 // Estado en memoria para sincronización entre componentes
 let productosMemoria: Producto[] = [...PRODUCTOS_INICIALES];
@@ -212,3 +103,86 @@ export function ajustarStock(
     movimiento: nuevoMovimiento,
   };
 }
+
+export function buscarProductos(termino: string): Producto[] {
+  const limpio = termino.trim().toLowerCase();
+  if (!limpio) return [...productosMemoria];
+  return productosMemoria.filter(
+    (p) =>
+      p.nombre.toLowerCase().includes(limpio) ||
+      p.codigoBarras.toLowerCase().includes(limpio) ||
+      p.categoria.toLowerCase().includes(limpio)
+  );
+}
+
+export function crearProducto(input: CrearProductoInput): ResultadoCreacionProducto {
+  const codigoLimpio = input.codigoBarras?.trim() ?? '';
+  const nombreLimpio = input.nombre?.trim() ?? '';
+  const errores: NonNullable<ResultadoCreacionProducto['errores']> = {};
+
+  if (!nombreLimpio) {
+    errores.nombre = 'El nombre del producto es obligatorio.';
+  }
+
+  if (!codigoLimpio) {
+    errores.codigoBarras = 'El código de barras es obligatorio.';
+  } else if (getProductoByCodigo(codigoLimpio)) {
+    errores.codigoBarras = `El código "${codigoLimpio}" ya existe en el inventario.`;
+  }
+
+  if (typeof input.precio !== 'number' || isNaN(input.precio) || input.precio < 0) {
+    errores.precio = 'El precio debe ser un número mayor o igual a 0.';
+  }
+
+  const stockActual = input.stockActual ?? 0;
+  if (typeof stockActual !== 'number' || isNaN(stockActual) || stockActual < 0) {
+    errores.stockActual = 'El stock inicial debe ser mayor o igual a 0.';
+  }
+
+  const stockMinimo = input.stockMinimo ?? 3;
+  if (typeof stockMinimo !== 'number' || isNaN(stockMinimo) || stockMinimo < 1) {
+    errores.stockMinimo = 'El stock mínimo debe ser al menos 1.';
+  }
+
+  if (Object.keys(errores).length > 0) {
+    const primerError = Object.values(errores)[0] ?? 'Datos del producto inválidos.';
+    return { exito: false, mensaje: primerError, errores };
+  }
+
+  const nuevoId = `prod-${Date.now()}`;
+  const nuevoProducto: Producto = {
+    id: nuevoId,
+    codigoBarras: codigoLimpio,
+    nombre: nombreLimpio,
+    categoria: input.categoria?.trim() || 'General',
+    precio: input.precio,
+    stockActual,
+    stockMinimo,
+    unidadMedida: input.unidadMedida?.trim() || 'unidad',
+    actualizadoEn: new Date().toISOString(),
+  };
+
+  productosMemoria.unshift(nuevoProducto);
+
+  if (stockActual > 0) {
+    const nuevoMovimiento: MovimientoStock = {
+      id: `mov-${Date.now()}`,
+      productoId: nuevoProducto.id,
+      productoNombre: nuevoProducto.nombre,
+      tipo: 'ENTRADA',
+      cantidad: stockActual,
+      stockAnterior: 0,
+      stockNuevo: stockActual,
+      motivo: 'Inventario inicial al registrar producto',
+      fecha: new Date().toISOString(),
+    };
+    movimientosMemoria.unshift(nuevoMovimiento);
+  }
+
+  return {
+    exito: true,
+    mensaje: `Producto "${nuevoProducto.nombre}" registrado exitosamente.`,
+    producto: nuevoProducto,
+  };
+}
+

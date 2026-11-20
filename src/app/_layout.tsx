@@ -53,6 +53,13 @@ export default function RootLayout() {
             headerBackTitle: 'Atrás',
           }}
         />
+        <Stack.Screen
+          name="producto/nuevo"
+          options={{
+            title: 'Nuevo Producto',
+            headerBackTitle: 'Atrás',
+          }}
+        />
       </Stack>
     </GestureHandlerRootView>
   );

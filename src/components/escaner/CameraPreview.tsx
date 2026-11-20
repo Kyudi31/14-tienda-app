@@ -12,6 +12,8 @@ interface CameraPreviewProps {
   onBarcodeScanned: (result: BarcodeScanningResult) => void;
   onRequestPermission: () => void;
   permisoOtorgado: boolean;
+  onAbrirManual?: () => void;
+  onCrearProducto?: () => void;
   theme: AppTheme;
 }
 
@@ -21,6 +23,8 @@ export function CameraPreview({
   onBarcodeScanned,
   onRequestPermission,
   permisoOtorgado,
+  onAbrirManual,
+  onCrearProducto,
   theme,
 }: CameraPreviewProps) {
   const [zoom, setZoom] = useState(0);
@@ -149,6 +153,42 @@ export function CameraPreview({
           <Text style={styles.botonPermisoTexto}>Conceder Permiso</Text>
         </Pressable>
       )}
+
+      <View style={styles.fallbackAcciones}>
+        {onAbrirManual && (
+          <Pressable
+            style={[styles.botonFallback, { backgroundColor: theme.card, borderColor: theme.border }]}
+            onPress={onAbrirManual}
+            accessibilityRole="button"
+            accessibilityLabel="Buscar por nombre o ingresar código manualmente">
+            <SymbolView
+              name={{ ios: 'magnifyingglass', android: 'search', web: 'search' }}
+              size={18}
+              tintColor={theme.text}
+            />
+            <Text style={[styles.botonFallbackTexto, { color: theme.text }]}>
+              Buscar por nombre o código
+            </Text>
+          </Pressable>
+        )}
+
+        {onCrearProducto && (
+          <Pressable
+            style={[styles.botonFallback, { backgroundColor: theme.tint }]}
+            onPress={onCrearProducto}
+            accessibilityRole="button"
+            accessibilityLabel="Registrar un nuevo producto sin escanear">
+            <SymbolView
+              name={{ ios: 'plus', android: 'add', web: 'add' }}
+              size={18}
+              tintColor="#ffffff"
+            />
+            <Text style={[styles.botonFallbackTexto, { color: '#ffffff' }]}>
+              Registrar nuevo producto
+            </Text>
+          </Pressable>
+        )}
+      </View>
     </View>
   );
 }
@@ -216,4 +256,16 @@ const styles = StyleSheet.create({
   sinCamaraSub: { fontSize: 14, marginTop: 8, textAlign: 'center', maxWidth: 280 },
   botonPermiso: { marginTop: 20, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10 },
   botonPermisoTexto: { color: '#ffffff', fontWeight: '600', fontSize: 14 },
+  fallbackAcciones: { marginTop: 24, gap: 12, width: '100%', maxWidth: 280 },
+  botonFallback: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  botonFallbackTexto: { fontSize: 14, fontWeight: '600' },
 });

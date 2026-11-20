@@ -13,6 +13,7 @@ Registro de sesiones de desarrollo asistido con IA, metodologías aplicadas, val
 | **#3 · 14-Nov** | Definición de barreras y pruebas de contención | *"Diseña la matriz de pruebas del canario ZZZ-NO-ES-UN-SECRETO"* | Comprobación de que `.env*` esté excluido de Git y del agente | Aceptado |
 | **#4 · 19-Nov** | Navegación Hito 1 y rutas Expo Router | *"Configura arquitectura de rutas Expo Router (tabs, escaner, movimientos, producto/[id]) con GestureHandlerRootView"* | `npx tsc --noEmit` código 0, auditoría de seguridad aprobada, archivos ≤ 300 líneas | Aceptado y commiteado tras revisión de diff |
 | **#5 · 19-Nov** | Gestos interactivos y accesibles (Hito 1) | *"Implementa Swipe horizontal en ProductCard y Pinch zoom en CameraPreview con alternativas accesibles por botón"* | `npx tsc --noEmit` código 0, sin any, alternativas accesibles con accessibilityLabel | Aceptado y commiteado |
+| **#6 · 19-Nov** | Escáner, sensor y formulario de alta (Hito 1) | *"Implementa throttle de escaneo 1.5s, CA-2 (código desconocido ofrece alta), CA-3 (alternativa manual sin cámara) y pantalla producto/nuevo con validaciones"* | `npx tsc --noEmit` código 0, validación de unicidad de código, precio y stock ≥ 0, archivos ≤ 300 líneas | Listo para commit |
 
 ---
 
