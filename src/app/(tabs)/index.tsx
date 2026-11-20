@@ -1,5 +1,13 @@
-import { useCallback, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useColorScheme,
+} from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 
@@ -7,18 +15,29 @@ import { ProductCard } from '@/components/inventario/ProductCard';
 import { ProductStats } from '@/components/inventario/ProductStats';
 import { SearchBar } from '@/components/inventario/SearchBar';
 import { Colors } from '@/constants/theme';
-import { getProductos } from '@/services/inventario';
+import { buscarProductosAsync, getProductosAsync } from '@/services/inventario';
+import type { Producto } from '@/types/inventario';
 
 export default function ProductosScreen() {
   const scheme = useColorScheme();
   const theme = Colors[scheme === 'dark' ? 'dark' : 'light'];
   const [busqueda, setBusqueda] = useState('');
   const [soloBajoStock, setSoloBajoStock] = useState(false);
-  const [actualizacion, setActualizacion] = useState(0);
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [cargando, setCargando] = useState(true);
 
-  const recargarProductos = useCallback(() => {
-    setActualizacion((v) => v + 1);
-  }, []);
+  const recargarProductos = useCallback(async () => {
+    try {
+      const data = busqueda.trim()
+        ? await buscarProductosAsync(busqueda)
+        : await getProductosAsync();
+      setProductos(data);
+    } catch (err) {
+      console.error('Error al cargar productos desde SQLite:', err);
+    } finally {
+      setCargando(false);
+    }
+  }, [busqueda]);
 
   useFocusEffect(
     useCallback(() => {
@@ -26,15 +45,29 @@ export default function ProductosScreen() {
     }, [recargarProductos])
   );
 
-  const productos = getProductos();
+  useEffect(() => {
+    let activo = true;
+    const ejecutarBusqueda = async () => {
+      try {
+        const data = busqueda.trim()
+          ? await buscarProductosAsync(busqueda)
+          : await getProductosAsync();
+        if (activo) {
+          setProductos(data);
+        }
+      } catch (err) {
+        console.error('Error al buscar en SQLite:', err);
+      }
+    };
+    ejecutarBusqueda();
+    return () => {
+      activo = false;
+    };
+  }, [busqueda]);
 
-  const productosFiltrados = productos.filter((prod) => {
-    const coincideTexto =
-      prod.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-      prod.codigoBarras.includes(busqueda);
-    const coincideFiltro = soloBajoStock ? prod.stockActual <= prod.stockMinimo : true;
-    return coincideTexto && coincideFiltro;
-  });
+  const productosFiltrados = soloBajoStock
+    ? productos.filter((prod) => prod.stockActual <= prod.stockMinimo)
+    : productos;
 
   const totalBajoStock = productos.filter((p) => p.stockActual <= p.stockMinimo).length;
 
@@ -55,42 +88,50 @@ export default function ProductosScreen() {
         theme={theme}
       />
 
-      <FlatList
-        data={productosFiltrados}
-        extraData={actualizacion}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <ProductCard
-            item={item}
-            onPress={() => router.push(`/producto/${item.id}`)}
-            onStockChange={recargarProductos}
-            theme={theme}
-          />
-        )}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>
-              No se encontraron productos
-            </Text>
-            <Text style={[styles.emptySub, { color: theme.textSecondary }]}>
-              Intenta cambiar los términos de búsqueda o desactiva los filtros.
-            </Text>
-            {(busqueda.length > 0 || soloBajoStock) && (
-              <Pressable
-                style={[styles.resetButton, { backgroundColor: theme.tint }]}
-                onPress={() => {
-                  setBusqueda('');
-                  setSoloBajoStock(false);
-                }}
-                accessibilityRole="button"
-                accessibilityLabel="Restablecer filtros y búsqueda">
-                <Text style={styles.resetButtonText}>Ver todos los productos</Text>
-              </Pressable>
-            )}
-          </View>
-        }
-      />
+      {cargando && productos.length === 0 ? (
+        <View style={styles.cargandoCentrado}>
+          <ActivityIndicator size="large" color={theme.tint} />
+          <Text style={[styles.cargandoTexto, { color: theme.textSecondary }]}>
+            Cargando catálogo local...
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={productosFiltrados}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <ProductCard
+              item={item}
+              onPress={() => router.push(`/producto/${item.id}`)}
+              onStockChange={recargarProductos}
+              theme={theme}
+            />
+          )}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>
+                No se encontraron productos
+              </Text>
+              <Text style={[styles.emptySub, { color: theme.textSecondary }]}>
+                Intenta cambiar los términos de búsqueda o desactiva los filtros.
+              </Text>
+              {(busqueda.length > 0 || soloBajoStock) && (
+                <Pressable
+                  style={[styles.resetButton, { backgroundColor: theme.tint }]}
+                  onPress={() => {
+                    setBusqueda('');
+                    setSoloBajoStock(false);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Restablecer filtros y búsqueda">
+                  <Text style={styles.resetButtonText}>Ver todos los productos</Text>
+                </Pressable>
+              )}
+            </View>
+          }
+        />
+      )}
 
       <Pressable
         style={({ pressed }) => [
@@ -100,7 +141,7 @@ export default function ProductosScreen() {
         ]}
         onPress={() => router.push('/escaner')}
         accessibilityRole="button"
-        accessibilityLabel="Abrir escáner de código de barras para buscar o actualizar producto">
+        accessibilityLabel="Abrir escáner de código de barras para buscar o registrar producto">
         <SymbolView
           name={{ ios: 'barcode.viewfinder', android: 'barcode_scanner', web: 'barcode_scanner' }}
           size={24}
@@ -120,6 +161,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 90,
     gap: 10,
+  },
+  cargandoCentrado: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  cargandoTexto: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   emptyContainer: {
     padding: 32,

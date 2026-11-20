@@ -38,6 +38,12 @@ export async function inicializarBD(): Promise<SQLite.SQLiteDatabase> {
     await aplicarMigraciones(db);
 
     dbInstance = db;
+    try {
+      const { setDatabaseClient } = await import('../services/inventarioMappers.ts');
+      setDatabaseClient(db);
+    } catch {
+      // Ignorar si no está disponible
+    }
     return db;
   })();
 
@@ -81,5 +87,11 @@ export async function cerrarBD(): Promise<void> {
     await dbInstance.closeAsync();
     dbInstance = null;
     initPromise = null;
+    try {
+      const { setDatabaseClient } = await import('../services/inventarioMappers.ts');
+      setDatabaseClient(null);
+    } catch {
+      // Ignorar si no está disponible
+    }
   }
 }

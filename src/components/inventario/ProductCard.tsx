@@ -13,7 +13,7 @@ import { SymbolView } from 'expo-symbols';
 import * as Haptics from 'expo-haptics';
 
 import { AppTheme } from '@/constants/theme';
-import { ajustarStock } from '@/services/inventario';
+import { ajustarStockAsync } from '@/services/inventario';
 import { Producto, TipoMovimiento } from '@/types/inventario';
 
 const SWIPE_THRESHOLD = 75;
@@ -36,17 +36,20 @@ export function ProductCard({ item, onPress, theme, onStockChange }: ProductCard
     stockActualSV.value = item.stockActual;
   }, [item, stockActualSV]);
 
-  const ejecutarAjusteStock = (delta: number) => {
+  const ejecutarAjusteStock = async (delta: number) => {
     if (delta < 0 && producto.stockActual <= 0) return;
     const tipo: TipoMovimiento = delta > 0 ? 'ENTRADA' : 'SALIDA';
     const motivo = delta > 0 ? 'Ajuste rápido (+1)' : 'Ajuste rápido (-1)';
-    const resultado = ajustarStock(producto.id, tipo, 1, motivo);
-
-    if (resultado.exito && resultado.producto) {
-      setProducto(resultado.producto);
-      stockActualSV.value = resultado.producto.stockActual;
-      onStockChange?.(resultado.producto);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    try {
+      const resultado = await ajustarStockAsync(producto.id, tipo, 1, motivo);
+      if (resultado.exito && resultado.producto) {
+        setProducto(resultado.producto);
+        stockActualSV.value = resultado.producto.stockActual;
+        onStockChange?.(resultado.producto);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      }
+    } catch (err) {
+      console.error('Error al ajustar stock en SQLite:', err);
     }
   };
 

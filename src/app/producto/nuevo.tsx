@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -14,8 +15,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 
 import { Colors } from '@/constants/theme';
-import { crearProducto, getProductoByCodigo } from '@/services/inventario';
-import { ErroresFormularioProducto } from '@/types/inventario';
+import { crearProductoAsync } from '@/services/inventario';
+import type { ErroresFormularioProducto } from '@/types/inventario';
 
 const CATEGORIAS_COMUNES = ['Abarrotes', 'Lácteos', 'Granos', 'Panadería', 'Bebidas', 'Limpieza', 'General'];
 const UNIDADES_COMUNES = ['unidad', 'bolsa', 'paquete', 'botella', 'kg', 'cubeta'];
@@ -32,6 +33,7 @@ export default function NuevoProductoScreen() {
   const [stockActualStr, setStockActualStr] = useState('0');
   const [stockMinimoStr, setStockMinimoStr] = useState('3');
   const [unidadMedida, setUnidadMedida] = useState('unidad');
+  const [guardando, setGuardando] = useState(false);
 
   const [errores, setErrores] = useState<ErroresFormularioProducto>({});
   const [errorGeneral, setErrorGeneral] = useState<string | null>(null);
@@ -45,12 +47,7 @@ export default function NuevoProductoScreen() {
     const stockMinNum = parseInt(stockMinimoStr, 10);
 
     if (!nomLimpio) nuevosErrores.nombre = 'El nombre del producto es obligatorio.';
-    if (!codLimpio) {
-      nuevosErrores.codigoBarras = 'El código de barras es obligatorio.';
-    } else {
-      const existente = getProductoByCodigo(codLimpio);
-      if (existente) nuevosErrores.codigoBarras = `El código "${codLimpio}" ya existe (${existente.nombre}).`;
-    }
+    if (!codLimpio) nuevosErrores.codigoBarras = 'El código de barras es obligatorio.';
     if (precioStr.trim() === '' || isNaN(precioNum) || precioNum < 0) {
       nuevosErrores.precio = 'El precio debe ser un número mayor o igual a 0.';
     }
@@ -65,28 +62,35 @@ export default function NuevoProductoScreen() {
     return Object.keys(nuevosErrores).length === 0;
   };
 
-  const handleGuardar = () => {
+  const handleGuardar = async () => {
     setErrorGeneral(null);
     if (!validarFormulario()) {
       setErrorGeneral('Revisa los campos señalados antes de guardar.');
       return;
     }
 
-    const resultado = crearProducto({
-      codigoBarras: codigoBarras.trim(),
-      nombre: nombre.trim(),
-      categoria,
-      precio: parseFloat(precioStr),
-      stockActual: parseInt(stockActualStr, 10) || 0,
-      stockMinimo: parseInt(stockMinimoStr, 10) || 3,
-      unidadMedida,
-    });
+    setGuardando(true);
+    try {
+      const resultado = await crearProductoAsync({
+        codigoBarras: codigoBarras.trim(),
+        nombre: nombre.trim(),
+        categoria,
+        precio: parseFloat(precioStr),
+        stockActual: parseInt(stockActualStr, 10) || 0,
+        stockMinimo: parseInt(stockMinimoStr, 10) || 3,
+        unidadMedida,
+      });
 
-    if (resultado.exito && resultado.producto) {
-      router.replace(`/producto/${resultado.producto.id}`);
-    } else {
-      setErrorGeneral(resultado.mensaje);
-      if (resultado.errores) setErrores(resultado.errores);
+      if (resultado.exito && resultado.producto) {
+        router.replace(`/producto/${resultado.producto.id}`);
+      } else {
+        setErrorGeneral(resultado.mensaje);
+        if (resultado.errores) setErrores(resultado.errores);
+      }
+    } catch {
+      setErrorGeneral('Error inesperado al persistir en SQLite.');
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -98,7 +102,7 @@ export default function NuevoProductoScreen() {
         <View style={styles.encabezado}>
           <Text style={[styles.titulo, { color: theme.text }]}>Registrar Nuevo Producto</Text>
           <Text style={[styles.subtitulo, { color: theme.textSecondary }]}>
-            Ingresa la información básica y de existencias para dar de alta el producto.
+            Ingresa los datos para registrar el producto en la base de datos local SQLite.
           </Text>
         </View>
 
@@ -109,7 +113,6 @@ export default function NuevoProductoScreen() {
           </View>
         )}
 
-        {/* Código de barras */}
         <View style={styles.campo}>
           <Text style={[styles.etiqueta, { color: theme.text }]}>Código de barras *</Text>
           <TextInput
@@ -126,7 +129,6 @@ export default function NuevoProductoScreen() {
           {errores.codigoBarras && <Text style={[styles.errorTexto, { color: theme.danger }]}>{errores.codigoBarras}</Text>}
         </View>
 
-        {/* Nombre */}
         <View style={styles.campo}>
           <Text style={[styles.etiqueta, { color: theme.text }]}>Nombre del producto *</Text>
           <TextInput
@@ -143,27 +145,22 @@ export default function NuevoProductoScreen() {
           {errores.nombre && <Text style={[styles.errorTexto, { color: theme.danger }]}>{errores.nombre}</Text>}
         </View>
 
-        {/* Categoría */}
         <View style={styles.campo}>
           <Text style={[styles.etiqueta, { color: theme.text }]}>Categoría</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsContenedor}>
-            {CATEGORIAS_COMUNES.map((cat) => {
-              const activa = categoria === cat;
-              return (
-                <Pressable
-                  key={cat}
-                  style={[styles.chip, { backgroundColor: activa ? theme.tint : theme.card, borderColor: activa ? theme.tint : theme.border }]}
-                  onPress={() => setCategoria(cat)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Seleccionar categoría ${cat}`}>
-                  <Text style={[styles.chipTexto, { color: activa ? '#ffffff' : theme.text }]}>{cat}</Text>
-                </Pressable>
-              );
-            })}
+            {CATEGORIAS_COMUNES.map((cat) => (
+              <Pressable
+                key={cat}
+                style={[styles.chip, { backgroundColor: categoria === cat ? theme.tint : theme.card, borderColor: categoria === cat ? theme.tint : theme.border }]}
+                onPress={() => setCategoria(cat)}
+                accessibilityRole="button"
+                accessibilityLabel={`Seleccionar categoría ${cat}`}>
+                <Text style={[styles.chipTexto, { color: categoria === cat ? '#ffffff' : theme.text }]}>{cat}</Text>
+              </Pressable>
+            ))}
           </ScrollView>
         </View>
 
-        {/* Precio */}
         <View style={styles.campo}>
           <Text style={[styles.etiqueta, { color: theme.text }]}>Precio ($) *</Text>
           <TextInput
@@ -181,7 +178,6 @@ export default function NuevoProductoScreen() {
           {errores.precio && <Text style={[styles.errorTexto, { color: theme.danger }]}>{errores.precio}</Text>}
         </View>
 
-        {/* Fila Stock inicial y mínimo */}
         <View style={styles.filaCampos}>
           <View style={[styles.campo, { flex: 1 }]}>
             <Text style={[styles.etiqueta, { color: theme.text }]}>Stock inicial *</Text>
@@ -218,27 +214,22 @@ export default function NuevoProductoScreen() {
           </View>
         </View>
 
-        {/* Unidad de medida */}
         <View style={styles.campo}>
           <Text style={[styles.etiqueta, { color: theme.text }]}>Unidad de medida</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsContenedor}>
-            {UNIDADES_COMUNES.map((u) => {
-              const activa = unidadMedida === u;
-              return (
-                <Pressable
-                  key={u}
-                  style={[styles.chip, { backgroundColor: activa ? theme.tint : theme.card, borderColor: activa ? theme.tint : theme.border }]}
-                  onPress={() => setUnidadMedida(u)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Seleccionar unidad de medida ${u}`}>
-                  <Text style={[styles.chipTexto, { color: activa ? '#ffffff' : theme.text }]}>{u}</Text>
-                </Pressable>
-              );
-            })}
+            {UNIDADES_COMUNES.map((u) => (
+              <Pressable
+                key={u}
+                style={[styles.chip, { backgroundColor: unidadMedida === u ? theme.tint : theme.card, borderColor: unidadMedida === u ? theme.tint : theme.border }]}
+                onPress={() => setUnidadMedida(u)}
+                accessibilityRole="button"
+                accessibilityLabel={`Seleccionar unidad de medida ${u}`}>
+                <Text style={[styles.chipTexto, { color: unidadMedida === u ? '#ffffff' : theme.text }]}>{u}</Text>
+              </Pressable>
+            ))}
           </ScrollView>
         </View>
 
-        {/* Botones de acción */}
         <View style={styles.botonesAccion}>
           <Pressable
             style={[styles.botonCancelar, { backgroundColor: theme.backgroundElement }]}
@@ -249,11 +240,17 @@ export default function NuevoProductoScreen() {
           </Pressable>
 
           <Pressable
-            style={[styles.botonGuardar, { backgroundColor: theme.tint }]}
+            style={[styles.botonGuardar, { backgroundColor: theme.tint, opacity: guardando ? 0.7 : 1 }]}
             onPress={handleGuardar}
+            disabled={guardando}
             accessibilityRole="button"
-            accessibilityLabel="Guardar nuevo producto en inventario">
-            <Text style={styles.botonGuardarTexto}>Guardar Producto</Text>
+            accessibilityLabel="Guardar nuevo producto en inventario SQLite"
+            accessibilityState={{ disabled: guardando }}>
+            {guardando ? (
+              <ActivityIndicator size="small" color="#ffffff" />
+            ) : (
+              <Text style={styles.botonGuardarTexto}>Guardar Producto</Text>
+            )}
           </Pressable>
         </View>
       </ScrollView>
@@ -280,6 +277,6 @@ const styles = StyleSheet.create({
   botonesAccion: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 14 },
   botonCancelar: { paddingVertical: 12, paddingHorizontal: 20, borderRadius: 10, justifyContent: 'center' },
   botonCancelarTexto: { fontSize: 15, fontWeight: '600' },
-  botonGuardar: { paddingVertical: 12, paddingHorizontal: 24, borderRadius: 10, justifyContent: 'center' },
+  botonGuardar: { paddingVertical: 12, paddingHorizontal: 24, borderRadius: 10, justifyContent: 'center', minWidth: 140, alignItems: 'center' },
   botonGuardarTexto: { color: '#ffffff', fontSize: 15, fontWeight: '700' },
 });

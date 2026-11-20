@@ -9,7 +9,7 @@ import { CodigoNoRegistradoCard } from '@/components/escaner/CodigoNoRegistradoC
 import { ManualBarcodeInputModal } from '@/components/escaner/ManualBarcodeInputModal';
 import { ScannedProductCard } from '@/components/escaner/ScannedProductCard';
 import { Colors } from '@/constants/theme';
-import { buscarProductos, getProductoByCodigo } from '@/services/inventario';
+import { buscarProductosAsync, getProductoByCodigoAsync } from '@/services/inventario';
 import { Producto } from '@/types/inventario';
 
 export default function EscanerScreen() {
@@ -44,24 +44,28 @@ export default function EscanerScreen() {
     }, [reanudarEscaneo])
   );
 
-  const procesarCodigo = (codigo: string) => {
+  const procesarCodigo = async (codigo: string) => {
     const limpiado = codigo.trim();
     if (!limpiado) {
       setErrorMensaje('Por favor ingresa un código de barras o término válido.');
       return;
     }
 
-    const prod = getProductoByCodigo(limpiado);
-    if (prod) {
-      setProductoEncontrado(prod);
-      setCodigoNoRegistrado(null);
-      setErrorMensaje(null);
-      setModalManualVisible(false);
-    } else {
-      setProductoEncontrado(null);
-      setCodigoNoRegistrado(limpiado);
-      setErrorMensaje(null);
-      setModalManualVisible(false);
+    try {
+      const prod = await getProductoByCodigoAsync(limpiado);
+      if (prod) {
+        setProductoEncontrado(prod);
+        setCodigoNoRegistrado(null);
+        setErrorMensaje(null);
+        setModalManualVisible(false);
+      } else {
+        setProductoEncontrado(null);
+        setCodigoNoRegistrado(limpiado);
+        setErrorMensaje(null);
+        setModalManualVisible(false);
+      }
+    } catch {
+      setErrorMensaje('Error al consultar el producto en SQLite.');
     }
   };
 
@@ -81,28 +85,32 @@ export default function EscanerScreen() {
     ultimoCodigoEscaneadoRef.current = codigo;
     ultimoTimestampEscaneadoRef.current = ahora;
     setEscaneoPausado(true);
-    procesarCodigo(codigo);
+    void procesarCodigo(codigo);
   };
 
-  const ejecutarBusquedaManual = () => {
+  const ejecutarBusquedaManual = async () => {
     const termino = busquedaTexto.trim();
     if (!termino) {
       setErrorMensaje('Ingresa un código de barras o nombre.');
       return;
     }
 
-    const prodDirecto = getProductoByCodigo(termino);
-    if (prodDirecto) {
-      setResultadosBusqueda([prodDirecto]);
+    try {
+      const prodDirecto = await getProductoByCodigoAsync(termino);
+      if (prodDirecto) {
+        setResultadosBusqueda([prodDirecto]);
+        setBusquedaRealizada(true);
+        setErrorMensaje(null);
+        return;
+      }
+
+      const coincidencias = await buscarProductosAsync(termino);
+      setResultadosBusqueda(coincidencias);
       setBusquedaRealizada(true);
       setErrorMensaje(null);
-      return;
+    } catch {
+      setErrorMensaje('Error al buscar en SQLite.');
     }
-
-    const coincidencias = buscarProductos(termino);
-    setResultadosBusqueda(coincidencias);
-    setBusquedaRealizada(true);
-    setErrorMensaje(null);
   };
 
   const irADarDeAlta = (termino: string) => {

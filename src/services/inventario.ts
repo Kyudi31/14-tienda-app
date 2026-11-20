@@ -8,7 +8,20 @@ import type {
 } from '@/types/inventario';
 import { MOVIMIENTOS_INICIALES, PRODUCTOS_INICIALES } from './mockInventario.ts';
 
-// Estado en memoria para sincronización entre componentes
+export {
+  getProductosSQLite as getProductosAsync,
+  buscarProductosSQLite as buscarProductosAsync,
+  getProductoByIdSQLite as getProductoByIdAsync,
+  getProductoByCodigoSQLite as getProductoByCodigoAsync,
+  ajustarStockSQLite as ajustarStockAsync,
+  crearProductoSQLite as crearProductoAsync,
+  getMovimientosSQLite as getMovimientosAsync,
+  getMovimientosPorProductoSQLite as getMovimientosPorProductoAsync,
+  valorInventarioSQLite as valorInventarioAsync,
+  setDatabaseClient,
+} from './inventarioSQLite.ts';
+
+// Estado en memoria para sincronización y compatibilidad con pruebas unitarias
 let productosMemoria: Producto[] = PRODUCTOS_INICIALES.map((p) => ({ ...p }));
 let movimientosMemoria: MovimientoStock[] = MOVIMIENTOS_INICIALES.map((m) => ({ ...m }));
 
@@ -214,5 +227,3 @@ export function reiniciarMemoria(
   productosMemoria = productos.map((p) => ({ ...p }));
   movimientosMemoria = movimientos.map((m) => ({ ...m }));
 }
-
-

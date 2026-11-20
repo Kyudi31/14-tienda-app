@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -17,26 +18,62 @@ import { ProductMovementHistory } from '@/components/producto/ProductMovementHis
 import { StockAdjustmentForm } from '@/components/producto/StockAdjustmentForm';
 import { Colors } from '@/constants/theme';
 import {
-  ajustarStock,
-  getMovimientosPorProducto,
-  getProductoByCodigo,
-  getProductoById,
+  ajustarStockAsync,
+  getMovimientosPorProductoAsync,
+  getProductoByCodigoAsync,
+  getProductoByIdAsync,
 } from '@/services/inventario';
-import { Producto, TipoMovimiento } from '@/types/inventario';
+import type { MovimientoStock, Producto, TipoMovimiento } from '@/types/inventario';
 
 export default function DetalleProductoScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const scheme = useColorScheme();
   const theme = Colors[scheme === 'dark' ? 'dark' : 'light'];
 
-  const productoEncontrado: Producto | undefined =
-    getProductoById(id ?? '') ?? getProductoByCodigo(id ?? '');
+  const [producto, setProducto] = useState<Producto | null | undefined>(undefined);
+  const [movimientosProducto, setMovimientosProducto] = useState<MovimientoStock[]>([]);
+  const [cargando, setCargando] = useState(true);
 
-  const [producto, setProducto] = useState<Producto | undefined>(productoEncontrado);
   const [tipo, setTipo] = useState<TipoMovimiento>('ENTRADA');
   const [cantidadStr, setCantidadStr] = useState('1');
   const [motivo, setMotivo] = useState('');
   const [mensajeEstado, setMensajeEstado] = useState<{ texto: string; error: boolean } | null>(null);
+
+  const cargarProducto = useCallback(async () => {
+    if (!id) {
+      setProducto(null);
+      setCargando(false);
+      return;
+    }
+    try {
+      const prod = (await getProductoByIdAsync(id)) ?? (await getProductoByCodigoAsync(id));
+      setProducto(prod);
+      if (prod) {
+        const movs = await getMovimientosPorProductoAsync(prod.id);
+        setMovimientosProducto(movs);
+      }
+    } catch (err) {
+      console.error('Error al cargar detalle del producto desde SQLite:', err);
+      setProducto(null);
+    } finally {
+      setCargando(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    cargarProducto();
+  }, [cargarProducto]);
+
+  if (cargando) {
+    return (
+      <View style={[styles.centrado, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.tint} />
+        <Text style={[styles.cargandoTexto, { color: theme.textSecondary }]}>
+          Cargando detalle del producto...
+        </Text>
+      </View>
+    );
+  }
 
   if (!producto) {
     return (
@@ -68,9 +105,8 @@ export default function DetalleProductoScreen() {
     tipo === 'ENTRADA' ? producto.stockActual + cantidad : producto.stockActual - cantidad;
   const esSalidaInvalida = tipo === 'SALIDA' && nuevoStockProyectado < 0;
   const bajoStock = producto.stockActual <= producto.stockMinimo;
-  const movimientosProducto = getMovimientosPorProducto(producto.id);
 
-  const handleConfirmarAjuste = () => {
+  const handleConfirmarAjuste = async () => {
     if (cantidad <= 0) {
       setMensajeEstado({ texto: 'Ingresa una cantidad mayor a 0.', error: true });
       return;
@@ -84,14 +120,20 @@ export default function DetalleProductoScreen() {
       return;
     }
 
-    const resultado = ajustarStock(producto.id, tipo, cantidad, motivo);
-    if (resultado.exito && resultado.producto) {
-      setProducto(resultado.producto);
-      setMensajeEstado({ texto: resultado.mensaje, error: false });
-      setMotivo('');
-      setCantidadStr('1');
-    } else {
-      setMensajeEstado({ texto: resultado.mensaje, error: true });
+    try {
+      const resultado = await ajustarStockAsync(producto.id, tipo, cantidad, motivo);
+      if (resultado.exito && resultado.producto) {
+        setProducto(resultado.producto);
+        setMensajeEstado({ texto: resultado.mensaje, error: false });
+        setMotivo('');
+        setCantidadStr('1');
+        const movs = await getMovimientosPorProductoAsync(resultado.producto.id);
+        setMovimientosProducto(movs);
+      } else {
+        setMensajeEstado({ texto: resultado.mensaje, error: true });
+      }
+    } catch {
+      setMensajeEstado({ texto: 'Error al persistir el ajuste en SQLite.', error: true });
     }
   };
 
@@ -154,6 +196,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
+  },
+  cargandoTexto: {
+    marginTop: 12,
+    fontSize: 14,
+    fontWeight: '500',
   },
   noEncontradoTitulo: {
     fontSize: 18,
