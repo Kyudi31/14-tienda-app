@@ -7,4 +7,5 @@ Este repositorio cuenta con controles de seguridad, barreras de contención y au
 - **Diseño de Barreras y Seguridad:** [ia/CONFIGURACION.md](./ia/CONFIGURACION.md)
 - **10 Pruebas de Contención (Canario):** [ia/PRUEBAS-CONTENCION.md](./ia/PRUEBAS-CONTENCION.md)
 - **Bitácora de Decisiones y Correcciones:** [ia/BITACORA.md](./ia/BITACORA.md)
+- **Guía de Sustentación en Vivo:** [ia/GUIA-SUSTENTACION.md](./ia/GUIA-SUSTENTACION.md)
 - **Skill de Auditoría de Seguridad:** [.agents/skills/safety-audit/SKILL.md](./.agents/skills/safety-audit/SKILL.md)

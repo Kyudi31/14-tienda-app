@@ -1,16 +1,20 @@
 {
   "expo": {
-    "name": "14-inventario-tienda-app",
+    "name": "Inventario de Barrio",
     "slug": "14-inventario-tienda-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "14inventariotiendaapp",
+    "scheme": "inventariotienda",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "com.tiendabarrio.inventario",
+      "permissions": [
+        "CAMERA"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -34,7 +38,13 @@
         }
       ],
       "expo-sqlite",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permite acceder a la cámara para escanear códigos de barras de los productos."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
