@@ -18,6 +18,7 @@ export {
   getMovimientosSQLite as getMovimientosAsync,
   getMovimientosPorProductoSQLite as getMovimientosPorProductoAsync,
   valorInventarioSQLite as valorInventarioAsync,
+  deshacerUltimoMovimientoSQLite as deshacerUltimoMovimientoAsync,
   setDatabaseClient,
 } from './inventarioSQLite.ts';
 
@@ -112,6 +113,72 @@ export function ajustarStock(
   return {
     exito: true,
     mensaje: `Stock actualizado a ${nuevoStock} unidades.`,
+    producto: productoActualizado,
+    movimiento: nuevoMovimiento,
+  };
+}
+
+export function deshacerUltimoMovimiento(productoId?: string): ResultadoAjuste {
+  const mov = productoId
+    ? movimientosMemoria.find((m) => m.productoId === productoId)
+    : movimientosMemoria[0];
+
+  if (!mov) {
+    return { exito: false, mensaje: 'No hay movimientos para deshacer' };
+  }
+
+  const indice = productosMemoria.findIndex((p) => p.id === mov.productoId);
+  if (indice === -1) {
+    return { exito: false, mensaje: 'Producto asociado al movimiento no encontrado' };
+  }
+
+  const producto = productosMemoria[indice]!;
+  let nuevoStock = producto.stockActual;
+  let tipoReversion: TipoMovimiento = 'SALIDA';
+
+  if (mov.tipo === 'ENTRADA') {
+    if (producto.stockActual - mov.cantidad < 0) {
+      return {
+        exito: false,
+        mensaje: `No se puede deshacer: el stock resultante sería negativo. El stock actual es ${producto.stockActual}.`,
+      };
+    }
+    nuevoStock = producto.stockActual - mov.cantidad;
+    tipoReversion = 'SALIDA';
+  } else if (mov.tipo === 'SALIDA') {
+    nuevoStock = producto.stockActual + mov.cantidad;
+    tipoReversion = 'ENTRADA';
+  } else {
+    return { exito: false, mensaje: 'El último movimiento no modificó la cantidad de stock.' };
+  }
+
+  const fecha = new Date().toISOString();
+  const motivoReversion = `Deshacer: reversión de ${mov.tipo.toLowerCase()} (${mov.cantidad} unidades)`;
+
+  const productoActualizado: Producto = {
+    ...producto,
+    stockActual: nuevoStock,
+    actualizadoEn: fecha,
+  };
+
+  const nuevoMovimiento: MovimientoStock = {
+    id: `mov-${Date.now()}`,
+    productoId: producto.id,
+    productoNombre: producto.nombre,
+    tipo: tipoReversion,
+    cantidad: mov.cantidad,
+    stockAnterior: producto.stockActual,
+    stockNuevo: nuevoStock,
+    motivo: motivoReversion,
+    fecha,
+  };
+
+  productosMemoria[indice] = productoActualizado;
+  movimientosMemoria.unshift(nuevoMovimiento);
+
+  return {
+    exito: true,
+    mensaje: `Se deshizo el último movimiento (${mov.cantidad} unidades de ${producto.nombre}).`,
     producto: productoActualizado,
     movimiento: nuevoMovimiento,
   };

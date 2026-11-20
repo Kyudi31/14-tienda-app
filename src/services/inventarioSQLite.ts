@@ -16,6 +16,7 @@ import type {
   TipoMovimiento,
 } from '../types/inventario.ts';
 import {
+  buscarProductoRow,
   mapearMovimientoRowAMovimiento,
   mapearProductoRowAProducto,
   resolveDatabase,
@@ -46,21 +47,8 @@ export async function getProductoByIdSQLite(
   db?: DatabaseClient
 ): Promise<Producto | null> {
   const client = await resolveDatabase(db);
-  const numericId = typeof id === 'number' ? id : parseInt(id, 10);
-
-  if (!isNaN(numericId) && String(numericId) === String(id).trim()) {
-    const row = await productoRepository.obtenerPorId(client, numericId);
-    if (row) return mapearProductoRowAProducto(row);
-  }
-
-  const porRemote = await client.getFirstAsync<ProductoRow>(
-    'SELECT * FROM producto WHERE remote_id = ? AND deleted = 0;',
-    [String(id)]
-  );
-  if (porRemote) return mapearProductoRowAProducto(porRemote);
-
-  const porCodigo = await productoRepository.obtenerPorCodigo(client, String(id));
-  return porCodigo ? mapearProductoRowAProducto(porCodigo) : null;
+  const row = await buscarProductoRow(client, id);
+  return row ? mapearProductoRowAProducto(row) : null;
 }
 
 export async function getProductoByCodigoSQLite(
@@ -87,18 +75,7 @@ export async function ajustarStockSQLite(
   const client = await resolveDatabase(db);
   if (cantidad <= 0) return { exito: false, mensaje: 'La cantidad debe ser mayor a 0' };
 
-  const numericId = typeof productoId === 'number' ? productoId : parseInt(productoId, 10);
-  let prodRow: ProductoRow | null = null;
-
-  if (!isNaN(numericId) && String(numericId) === String(productoId).trim()) {
-    prodRow = await productoRepository.obtenerPorId(client, numericId);
-  }
-  if (!prodRow) {
-    prodRow = await client.getFirstAsync<ProductoRow>(
-      'SELECT * FROM producto WHERE (remote_id = ? OR codigo = ?) AND deleted = 0;',
-      [String(productoId), String(productoId)]
-    );
-  }
+  const prodRow = await buscarProductoRow(client, productoId);
   if (!prodRow) return { exito: false, mensaje: 'Producto no encontrado' };
 
   const stockActual = prodRow.stock;
@@ -257,3 +234,5 @@ export async function valorInventarioSQLite(db?: DatabaseClient): Promise<number
   const productos = await productoRepository.obtenerTodos(client);
   return productos.reduce((total, p) => total + centavosAPrecio(p.precio_centavos) * p.stock, 0);
 }
+
+export { deshacerUltimoMovimientoSQLite } from './inventarioReversion.ts';

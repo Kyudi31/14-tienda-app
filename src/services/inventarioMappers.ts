@@ -85,3 +85,26 @@ export function mapearMovimientoRowAMovimiento(
     fecha: row.fecha,
   };
 }
+
+/**
+ * Busca una fila de producto en SQLite por su ID numérico, remote_id o código de barras.
+ */
+export async function buscarProductoRow(
+  client: DatabaseClient,
+  identificador: string | number
+): Promise<ProductoRow | null> {
+  const numericId = typeof identificador === 'number' ? identificador : parseInt(identificador, 10);
+  if (!isNaN(numericId) && String(numericId) === String(identificador).trim()) {
+    const row = await client.getFirstAsync<ProductoRow>(
+      'SELECT * FROM producto WHERE id = ? AND deleted = 0;',
+      [numericId]
+    );
+    if (row) return row;
+  }
+
+  const strId = String(identificador).trim();
+  return await client.getFirstAsync<ProductoRow>(
+    'SELECT * FROM producto WHERE (remote_id = ? OR codigo = ?) AND deleted = 0;',
+    [strId, strId]
+  );
+}

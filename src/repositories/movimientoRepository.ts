@@ -39,6 +39,24 @@ ORDER BY m.fecha DESC
 LIMIT ?;
 `.trim();
 
+export const SQL_OBTENER_ULTIMO_MOVIMIENTO = `
+SELECT m.*, p.nombre AS producto_nombre
+FROM movimiento_stock m
+JOIN producto p ON m.producto_id = p.id
+WHERE m.deleted = 0
+ORDER BY m.id DESC
+LIMIT 1;
+`.trim();
+
+export const SQL_OBTENER_ULTIMO_MOVIMIENTO_POR_PRODUCTO = `
+SELECT m.*, p.nombre AS producto_nombre
+FROM movimiento_stock m
+JOIN producto p ON m.producto_id = p.id
+WHERE m.deleted = 0 AND m.producto_id = ?
+ORDER BY m.id DESC
+LIMIT 1;
+`.trim();
+
 /**
  * Registra un movimiento de stock en la base de datos con pending = 1.
  */
@@ -86,8 +104,28 @@ export async function obtenerTodos(
   ]);
 }
 
+/**
+ * Obtiene el último movimiento registrado en la base de datos,
+ * opcionalmente filtrado por un producto específico.
+ */
+export async function obtenerUltimo(
+  db: DatabaseClient,
+  productoId?: number
+): Promise<MovimientoStockConProductoRow | null> {
+  if (productoId !== undefined) {
+    return await db.getFirstAsync<MovimientoStockConProductoRow>(
+      SQL_OBTENER_ULTIMO_MOVIMIENTO_POR_PRODUCTO,
+      [productoId]
+    );
+  }
+  return await db.getFirstAsync<MovimientoStockConProductoRow>(
+    SQL_OBTENER_ULTIMO_MOVIMIENTO
+  );
+}
+
 export const movimientoRepository = {
   registrar,
   obtenerPorProducto,
   obtenerTodos,
+  obtenerUltimo,
 };

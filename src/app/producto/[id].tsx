@@ -13,12 +13,15 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 
+import { UndoBar } from '@/components/movimientos/UndoBar';
 import { ProductHeaderCard } from '@/components/producto/ProductHeaderCard';
 import { ProductMovementHistory } from '@/components/producto/ProductMovementHistory';
 import { StockAdjustmentForm } from '@/components/producto/StockAdjustmentForm';
 import { Colors } from '@/constants/theme';
+import { useShake } from '@/sensors/useShake';
 import {
   ajustarStockAsync,
+  deshacerUltimoMovimientoAsync,
   getMovimientosPorProductoAsync,
   getProductoByCodigoAsync,
   getProductoByIdAsync,
@@ -33,6 +36,7 @@ export default function DetalleProductoScreen() {
   const [producto, setProducto] = useState<Producto | null | undefined>(undefined);
   const [movimientosProducto, setMovimientosProducto] = useState<MovimientoStock[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [deshaciendo, setDeshaciendo] = useState(false);
 
   const [tipo, setTipo] = useState<TipoMovimiento>('ENTRADA');
   const [cantidadStr, setCantidadStr] = useState('1');
@@ -63,6 +67,29 @@ export default function DetalleProductoScreen() {
   useEffect(() => {
     cargarProducto();
   }, [cargarProducto]);
+
+  const handleDeshacer = useCallback(async () => {
+    if (!producto || deshaciendo) return;
+    setDeshaciendo(true);
+    try {
+      const res = await deshacerUltimoMovimientoAsync(producto.id);
+      if (res.exito && res.producto) {
+        setProducto(res.producto);
+        setMensajeEstado({ texto: res.mensaje, error: false });
+        const movs = await getMovimientosPorProductoAsync(res.producto.id);
+        setMovimientosProducto(movs);
+      } else {
+        setMensajeEstado({ texto: res.mensaje, error: true });
+      }
+    } catch {
+      setMensajeEstado({ texto: 'Error al deshacer movimiento en SQLite.', error: true });
+    } finally {
+      setDeshaciendo(false);
+    }
+  }, [producto, deshaciendo]);
+
+  // Sensor Acelerómetro: Shake para deshacer último movimiento de este producto
+  useShake(handleDeshacer);
 
   if (cargando) {
     return (
@@ -170,6 +197,12 @@ export default function DetalleProductoScreen() {
           onModificarCantidad={modificarCantidad}
           onMotivoChange={setMotivo}
           onSubmit={handleConfirmarAjuste}
+          theme={theme}
+        />
+
+        <UndoBar
+          onDeshacer={handleDeshacer}
+          deshaciendo={deshaciendo}
           theme={theme}
         />
 
